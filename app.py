@@ -29,18 +29,26 @@ def webhook():
 
 
 def processRequest(req):
-    if req.get("result").get("action") != "yahooWeatherForecast":
-        return {}
-    baseurl = "https://query.yahooapis.com/v1/public/yql?"
-    yql_query = makeYqlQuery(req)
-    if yql_query is None:
-        return {}
-    yql_url = baseurl + urllib.urlencode({'q': yql_query}) + "&format=json"
-    result = urllib.urlopen(yql_url).read()
-    data = json.loads(result)
-    res = makeWebhookResult(data)
-    return res
-
+    if req.get("result").get("action") == "yahooWeatherForecast":
+        baseurl = "https://query.yahooapis.com/v1/public/yql?"
+        yql_query = makeYqlQuery(req)
+        if yql_query is None:
+            return {}
+        yql_url = baseurl + urllib.urlencode({'q': yql_query}) + "&format=json"
+        result = urllib.urlopen(yql_url).read()
+        data = json.loads(result)
+        res = makeWebhookResult(data)
+        return res
+    else if req.get("result").get("action") == "googleCustomSearch":
+        baseurl = "https://www.googleapis.com/customsearch/v1?key=AIzaSyBs8AZPIR0SHvcRhM_7sHgqqSk28tQdlX0&cx=017576662512468239146:omuauf_lfve&q=";
+        cs_query = makeCsQuery(req)
+        if cs_query is None:
+            return {}
+        cs_url = baseurl + urllib.urlencode({cs_query});
+        result = urllib.urlopen(cs_url).read()
+        data = json.loads(result)
+        res = makeWebhookResultForCustomSearch(data)
+        return res
 
 def makeYqlQuery(req):
     result = req.get("result")
@@ -51,7 +59,15 @@ def makeYqlQuery(req):
 
     return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "')"
 
-
+def makeCsQuery(req):
+    result = req.get("result")
+    parameters = result.get("parameters")
+    query = parameters.get("query")
+    if query is None:
+        return None
+    return query
+    
+    
 def makeWebhookResult(data):
     query = data.get('query')
     if query is None:
@@ -91,6 +107,22 @@ def makeWebhookResult(data):
         "source": "apiai-weather-webhook-sample"
     }
 
+def makeWebhookResultForCustomSearch(data):
+    if data.get("items") is None:
+        return {}
+    
+    speech = data.get("items")[0]
+
+    print("Response:")
+    print(speech)
+
+    return {
+        "speech": speech,
+        "displayText": speech,
+        # "data": data,
+        # "contextOut": [],
+        "source": "google custom search api"
+    }
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
